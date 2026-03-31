@@ -55,6 +55,22 @@ export default function AuthPage() {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
+
+    // Save user name to localStorage
+    if (tab === "register") {
+      localStorage.setItem("ccx_user_name", registerForm.name);
+    } else {
+      // For login, use stored name or derive from email
+      const storedName = localStorage.getItem("ccx_user_name");
+      if (!storedName) {
+        const derived = loginForm.email
+          .split("@")[0]
+          .replace(/[._-]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+        localStorage.setItem("ccx_user_name", derived);
+      }
+    }
+
     setTimeout(() => navigate({ to: "/dashboard" }), 1200);
   };
 

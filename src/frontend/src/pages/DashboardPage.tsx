@@ -200,6 +200,9 @@ export default function DashboardPage() {
     setSleep,
   } = useBluetoothHealth();
 
+  const userName = localStorage.getItem("ccx_user_name") || "there";
+  const firstName = userName.split(" ")[0];
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -242,7 +245,8 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-[#ffffff]">
-            Welcome back, <span className="text-[#f9a8c9]">Alex!</span> 👋
+            Welcome back, <span className="text-[#f9a8c9]">{firstName}!</span>{" "}
+            👋
           </h2>
           <p className="text-sm text-[#888888] mt-1">{today}</p>
         </div>

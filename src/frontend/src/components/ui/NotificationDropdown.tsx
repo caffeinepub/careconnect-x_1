@@ -65,9 +65,10 @@ export default function NotificationDropdown() {
 
       {open && (
         <>
-          {/* Backdrop — z-[9998] ensures it covers all other page elements */}
+          {/* Opaque backdrop — dims all other UI and blocks interaction */}
           <div
             className="fixed inset-0 z-[9998]"
+            style={{ background: "rgba(0,0,0,0.75)" }}
             onClick={handleClose}
             onKeyDown={(e) => e.key === "Escape" && handleClose()}
             role="button"

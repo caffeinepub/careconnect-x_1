@@ -4,60 +4,120 @@ import {
   MapPin,
   Navigation,
   Phone,
+  RefreshCw,
   Siren,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlassCard from "../components/ui/GlassCard";
 
-interface Hospital {
+interface NearbyHospital {
   id: number;
   name: string;
   phone: string;
-  type: "Government" | "Private";
-  mapsQuery: string;
+  address: string;
+  type: string;
+  lat: number;
+  lng: number;
+  distanceKm: number;
 }
 
-const fallbackHospitals: Hospital[] = [
-  {
-    id: 1,
-    name: "AIIMS Delhi",
-    phone: "01126588500",
-    type: "Government",
-    mapsQuery: "AIIMS+Delhi",
-  },
-  {
-    id: 2,
-    name: "Apollo Hospital",
-    phone: "01171179090",
-    type: "Private",
-    mapsQuery: "Apollo+Hospital+Delhi",
-  },
-  {
-    id: 3,
-    name: "Safdarjung Hospital",
-    phone: "01126198018",
-    type: "Government",
-    mapsQuery: "Safdarjung+Hospital+Delhi",
-  },
-  {
-    id: 4,
-    name: "Max Healthcare",
-    phone: "01126515050",
-    type: "Private",
-    mapsQuery: "Max+Healthcare+Delhi",
-  },
-];
-
 type LocationState = "idle" | "loading" | "granted" | "denied";
+type HospitalsState = "idle" | "loading" | "loaded" | "error";
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function fetchNearbyHospitals(
+  lat: number,
+  lng: number,
+  radiusM = 10000,
+): Promise<NearbyHospital[]> {
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["amenity"="hospital"](around:${radiusM},${lat},${lng});
+      way["amenity"="hospital"](around:${radiusM},${lat},${lng});
+      relation["amenity"="hospital"](around:${radiusM},${lat},${lng});
+    );
+    out center tags;
+  `;
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    body: query,
+  });
+  if (!res.ok) throw new Error("Overpass API error");
+  const data = await res.json();
+
+  return (data.elements as any[])
+    .map((el, idx) => {
+      const elLat = el.lat ?? el.center?.lat ?? lat;
+      const elLng = el.lon ?? el.center?.lon ?? lng;
+      const tags = el.tags ?? {};
+      const name =
+        tags["name:en"] || tags.name || tags["name:hi"] || "Unknown Hospital";
+      const phone = tags.phone || tags["contact:phone"] || "";
+      const street = tags["addr:street"] || "";
+      const city = tags["addr:city"] || tags["addr:district"] || "";
+      const address = [street, city].filter(Boolean).join(", ");
+      const operator = (tags.operator || "").toLowerCase();
+      const _healthcare = (tags["healthcare:speciality"] || "").toLowerCase();
+      const isGov =
+        operator.includes("government") ||
+        operator.includes("govt") ||
+        operator.includes("district") ||
+        operator.includes("civil") ||
+        operator.includes("public") ||
+        operator.includes("municipal") ||
+        operator.includes("state") ||
+        tags["operator:type"] === "public";
+      const type = isGov ? "Government" : "Private";
+      const distanceKm = haversine(lat, lng, elLat, elLng);
+      return {
+        id: idx + 1,
+        name,
+        phone,
+        address,
+        type,
+        lat: elLat,
+        lng: elLng,
+        distanceKm,
+      } as NearbyHospital;
+    })
+    .filter((h) => h.name !== "Unknown Hospital" || h.address)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, 15);
+}
 
 export default function EmergencyPage() {
   const [locationState, setLocationState] = useState<LocationState>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  const [hospitals, setHospitals] = useState<NearbyHospital[]>([]);
+  const [hospitalsState, setHospitalsState] = useState<HospitalsState>("idle");
 
   const handleSOS = () => {
     alert("🚨 Emergency services have been contacted! Help is on the way.");
+  };
+
+  const loadHospitals = async (lat: number, lng: number) => {
+    setHospitalsState("loading");
+    try {
+      const results = await fetchNearbyHospitals(lat, lng);
+      setHospitals(results);
+      setHospitalsState("loaded");
+    } catch {
+      setHospitalsState("error");
+    }
   };
 
   const detectLocation = () => {
@@ -68,8 +128,10 @@ export default function EmergencyPage() {
     setLocationState("loading");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCoords(c);
         setLocationState("granted");
+        loadHospitals(c.lat, c.lng);
       },
       () => {
         setLocationState("denied");
@@ -81,14 +143,13 @@ export default function EmergencyPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount
   useEffect(() => {
     detectLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getDirectionsUrl = (hospital: Hospital) => {
+  const getDirectionsUrl = (h: NearbyHospital) => {
     if (coords) {
-      return `https://www.google.com/maps/dir/${coords.lat},${coords.lng}/${hospital.mapsQuery}`;
+      return `https://www.google.com/maps/dir/${coords.lat},${coords.lng}/${h.lat},${h.lng}`;
     }
-    return `https://www.google.com/maps/search/${hospital.mapsQuery}`;
+    return `https://www.google.com/maps/search/${encodeURIComponent(h.name)}`;
   };
 
   const getNearbyUrl = () => {
@@ -96,6 +157,11 @@ export default function EmergencyPage() {
       return `https://www.google.com/maps/search/hospitals/@${coords.lat},${coords.lng},14z`;
     }
     return "https://www.google.com/maps/search/hospitals+near+me";
+  };
+
+  const formatDistance = (km: number) => {
+    if (km < 1) return `${Math.round(km * 1000)} m`;
+    return `${km.toFixed(1)} km`;
   };
 
   return (
@@ -204,7 +270,7 @@ export default function EmergencyPage() {
               <>
                 <MapPin size={16} className="text-[#f9a8c9]" />
                 <span className="text-sm text-[#f9a8c9]">
-                  Location detected — showing directions from you
+                  Location detected — showing hospitals near you
                 </span>
               </>
             )}
@@ -212,8 +278,15 @@ export default function EmergencyPage() {
               <>
                 <AlertCircle size={16} className="text-[#F59E0B]" />
                 <span className="text-sm text-[#F59E0B]">
-                  Location unavailable — directions will use map search
+                  Location unavailable — please allow location access
                 </span>
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="ml-2 text-xs text-[#f9a8c9] underline"
+                >
+                  Retry
+                </button>
               </>
             )}
             {locationState === "idle" && (
@@ -242,101 +315,200 @@ export default function EmergencyPage() {
         </div>
       </GlassCard>
 
-      {/* Nearby Hospitals with Call + Directions */}
+      {/* Nearby Hospitals */}
       <GlassCard className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <MapPin size={16} className="text-[#f9a8c9]" />
           <p className="text-sm font-semibold text-[#ffffff]">
             Nearby Hospitals
           </p>
-          <span className="text-[10px] text-[#888888] ml-auto">
-            Tap Call or Directions
-          </span>
-        </div>
-        <div className="space-y-3">
-          {fallbackHospitals.map((hospital, idx) => (
-            <div
-              key={hospital.id}
-              data-ocid={`emergency.hospital.item.${idx + 1}`}
-              className="flex items-center gap-4 p-4 rounded-xl transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-              style={{ border: "1px solid rgba(160,190,210,0.08)" }}
+          {hospitalsState === "loaded" && hospitals.length > 0 && (
+            <span className="text-[10px] text-[#888888] ml-1">
+              {hospitals.length} found within 10 km
+            </span>
+          )}
+          {hospitalsState === "loaded" && (
+            <button
+              type="button"
+              onClick={() => coords && loadHospitals(coords.lat, coords.lng)}
+              className="ml-auto flex items-center gap-1 text-[10px] text-[#f9a8c9] hover:opacity-80"
             >
-              {/* Icon */}
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{
-                  background:
-                    hospital.type === "Government"
-                      ? "rgba(249,168,201,0.12)"
-                      : "rgba(249,168,201,0.12)",
-                }}
-              >
-                <MapPin
-                  size={16}
-                  style={{
-                    color:
-                      hospital.type === "Government" ? "#f9a8c9" : "#f9a8c9",
-                  }}
-                />
-              </div>
+              <RefreshCw size={10} />
+              Refresh
+            </button>
+          )}
+          {hospitalsState === "idle" && (
+            <span className="text-[10px] text-[#888888] ml-auto">
+              Waiting for location...
+            </span>
+          )}
+        </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#ffffff] truncate">
-                    {hospital.name}
-                  </p>
-                  <span
-                    className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background:
-                        hospital.type === "Government"
-                          ? "rgba(249,168,201,0.1)"
-                          : "rgba(249,168,201,0.1)",
-                      color:
-                        hospital.type === "Government" ? "#f9a8c9" : "#f9a8c9",
-                    }}
-                  >
-                    {hospital.type}
+        {/* Loading state */}
+        {(locationState === "loading" || hospitalsState === "loading") && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Loader2 size={28} className="text-[#f9a8c9] animate-spin" />
+            <p className="text-sm text-[#888888]">
+              {locationState === "loading"
+                ? "Getting your location..."
+                : "Searching for hospitals near you..."}
+            </p>
+          </div>
+        )}
+
+        {/* Error */}
+        {hospitalsState === "error" && (
+          <div className="flex flex-col items-center py-8 gap-3">
+            <AlertCircle size={24} className="text-[#F59E0B]" />
+            <p className="text-sm text-[#888888] text-center">
+              Could not load nearby hospitals. Check your connection and try
+              again.
+            </p>
+            <button
+              type="button"
+              onClick={() => coords && loadHospitals(coords.lat, coords.lng)}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium"
+              style={{
+                background: "rgba(249,168,201,0.15)",
+                color: "#f9a8c9",
+                border: "1px solid rgba(249,168,201,0.3)",
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Location denied */}
+        {locationState === "denied" && hospitalsState === "idle" && (
+          <div className="flex flex-col items-center py-8 gap-3">
+            <AlertCircle size={24} className="text-[#F59E0B]" />
+            <p className="text-sm text-[#888888] text-center">
+              Location access is required to show nearby hospitals.
+            </p>
+            <button
+              type="button"
+              onClick={detectLocation}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium"
+              style={{
+                background: "rgba(249,168,201,0.15)",
+                color: "#f9a8c9",
+                border: "1px solid rgba(249,168,201,0.3)",
+              }}
+            >
+              Allow Location
+            </button>
+          </div>
+        )}
+
+        {/* No results */}
+        {hospitalsState === "loaded" && hospitals.length === 0 && (
+          <div className="flex flex-col items-center py-8 gap-2">
+            <MapPin size={24} className="text-[#888888]" />
+            <p className="text-sm text-[#888888] text-center">
+              No hospitals found within 10 km. Try opening Google Maps below.
+            </p>
+          </div>
+        )}
+
+        {/* Hospital list */}
+        {hospitalsState === "loaded" && hospitals.length > 0 && (
+          <div className="space-y-3">
+            {hospitals.map((hospital, idx) => (
+              <div
+                key={hospital.id}
+                data-ocid={`emergency.hospital.item.${idx + 1}`}
+                className="flex items-center gap-4 p-4 rounded-xl transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ border: "1px solid rgba(160,190,210,0.08)" }}
+              >
+                {/* Distance badge */}
+                <div
+                  className="w-14 h-14 rounded-xl flex flex-col items-center justify-center flex-shrink-0 gap-0.5"
+                  style={{ background: "rgba(249,168,201,0.08)" }}
+                >
+                  <MapPin size={14} className="text-[#f9a8c9]" />
+                  <span className="text-[10px] font-bold text-[#f9a8c9]">
+                    {formatDistance(hospital.distanceKm)}
                   </span>
                 </div>
-                <p className="text-xs text-[#888888]">{hospital.phone}</p>
-              </div>
 
-              {/* Actions — Directions first, then Call below */}
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                <a
-                  href={getDirectionsUrl(hospital)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-ocid={`emergency.directions.button.${idx + 1}`}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105 no-underline"
-                  style={{
-                    background: "rgba(249,168,201,0.15)",
-                    color: "#f9a8c9",
-                    border: "1px solid rgba(249,168,201,0.3)",
-                  }}
-                >
-                  <Navigation size={10} />
-                  Directions
-                </a>
-                <a
-                  href={`tel:${hospital.phone}`}
-                  data-ocid={`emergency.call.button.${idx + 1}`}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105 no-underline"
-                  style={{
-                    background: "rgba(255,77,90,0.15)",
-                    color: "#FF4D5A",
-                    border: "1px solid rgba(255,77,90,0.3)",
-                  }}
-                >
-                  <Phone size={10} />
-                  Call
-                </a>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-[#ffffff] truncate">
+                      {hospital.name}
+                    </p>
+                    <span
+                      className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: "rgba(249,168,201,0.1)",
+                        color: "#f9a8c9",
+                      }}
+                    >
+                      {hospital.type}
+                    </span>
+                  </div>
+                  {hospital.address && (
+                    <p className="text-xs text-[#888888] truncate mt-0.5">
+                      {hospital.address}
+                    </p>
+                  )}
+                  {hospital.phone && (
+                    <p className="text-xs text-[#666666] mt-0.5">
+                      {hospital.phone}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  <a
+                    href={getDirectionsUrl(hospital)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-ocid={`emergency.directions.button.${idx + 1}`}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105 no-underline"
+                    style={{
+                      background: "rgba(249,168,201,0.15)",
+                      color: "#f9a8c9",
+                      border: "1px solid rgba(249,168,201,0.3)",
+                    }}
+                  >
+                    <Navigation size={10} />
+                    Directions
+                  </a>
+                  {hospital.phone ? (
+                    <a
+                      href={`tel:${hospital.phone}`}
+                      data-ocid={`emergency.call.button.${idx + 1}`}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105 no-underline"
+                      style={{
+                        background: "rgba(255,77,90,0.15)",
+                        color: "#FF4D5A",
+                        border: "1px solid rgba(255,77,90,0.3)",
+                      }}
+                    >
+                      <Phone size={10} />
+                      Call
+                    </a>
+                  ) : (
+                    <span
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium opacity-40"
+                      style={{
+                        background: "rgba(255,77,90,0.08)",
+                        color: "#FF4D5A",
+                        border: "1px solid rgba(255,77,90,0.15)",
+                      }}
+                    >
+                      <Phone size={10} />
+                      No #
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </GlassCard>
     </div>
   );

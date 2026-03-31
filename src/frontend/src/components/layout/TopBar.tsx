@@ -1,4 +1,4 @@
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Calendar, Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import NotificationDropdown from "../ui/NotificationDropdown";
@@ -15,9 +15,18 @@ const pageTitles: Record<string, string> = {
 
 export default function TopBar() {
   const routerState = useRouterState();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const pathname = routerState.location.pathname;
   const title = pageTitles[pathname] || "CareConnect X";
+
+  const userName = localStorage.getItem("ccx_user_name") || "User";
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <header
@@ -42,6 +51,8 @@ export default function TopBar() {
       <div className="flex items-center gap-1">
         <button
           type="button"
+          onClick={() => navigate({ to: "/doctors" })}
+          title="Book an Appointment"
           className="p-2 rounded-xl text-[#cccccc] hover:text-pink-300 hover:bg-[rgba(249,168,201,0.1)] transition-all"
         >
           <Calendar size={18} />
@@ -63,12 +74,12 @@ export default function TopBar() {
       >
         <div className="relative">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-300 to-pink-400 flex items-center justify-center text-black text-xs font-bold">
-            AJ
+            {initials}
           </div>
           <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-pink-300 border-2 border-[#080808]" />
         </div>
         <div className="hidden sm:block">
-          <p className="text-xs font-semibold text-white">Alex Johnson</p>
+          <p className="text-xs font-semibold text-white">{userName}</p>
           <p className="text-[10px] text-pink-300">Online</p>
         </div>
       </div>
