@@ -247,6 +247,7 @@ export default function FirstAidPage() {
               data-ocid="firstaid.upload_button"
               className="px-6 py-2.5 rounded-xl font-semibold text-sm text-[#0d0d0d] transition-all hover:opacity-90"
               style={{
+                minHeight: 44,
                 background: "linear-gradient(135deg, #f9a8c9, #f9a8c9)",
               }}
             >
@@ -260,6 +261,7 @@ export default function FirstAidPage() {
           ref={fileRef}
           type="file"
           accept="image/*"
+          capture="environment"
           className="hidden"
           data-ocid="firstaid.input"
           onChange={handleFileChange}

@@ -1,6 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Calendar, Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
+import NotificationDropdown from "../ui/NotificationDropdown";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -29,11 +30,15 @@ export default function TopBar() {
 
   return (
     <header
-      className="h-16 flex items-center gap-4 px-6 flex-shrink-0"
+      className="flex items-center gap-4 px-6 flex-shrink-0"
       style={{
         background: "rgba(8, 8, 8, 0.9)",
         backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)",
+        paddingBottom: "0.875rem",
+        minHeight: "64px",
       }}
     >
       <h1 className="text-lg font-bold text-white flex-1">{title}</h1>
@@ -42,7 +47,7 @@ export default function TopBar() {
         <Search size={14} className="absolute left-3 text-[#888888]" />
         <input
           data-ocid="topbar.search_input"
-          placeholder="Find doctors, services…"
+          placeholder="Find doctors, services\u2026"
           className="pl-9 pr-4 py-2 rounded-full text-xs bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] text-[#cccccc] placeholder-[#888888] outline-none focus:border-[rgba(249,168,201,0.4)] w-52 transition-all"
         />
       </div>
@@ -53,14 +58,29 @@ export default function TopBar() {
           onClick={() => navigate({ to: "/doctors" })}
           title="Book an Appointment"
           className="p-2 rounded-xl text-[#cccccc] hover:text-pink-300 hover:bg-[rgba(249,168,201,0.1)] transition-all"
+          style={{
+            minWidth: 44,
+            minHeight: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
           <Calendar size={18} />
         </button>
+        <NotificationDropdown />
         <button
           type="button"
           data-ocid="topbar.theme.toggle"
           onClick={toggleTheme}
           className="p-2 rounded-xl text-[#cccccc] hover:text-pink-300 hover:bg-[rgba(249,168,201,0.1)] transition-all"
+          style={{
+            minWidth: 44,
+            minHeight: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
           {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>

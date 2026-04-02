@@ -76,6 +76,7 @@ export default function MedicalRecordsPage() {
           onDrop={handleDrop}
           className="flex flex-col items-center justify-center gap-3 p-10 rounded-xl cursor-pointer transition-all"
           style={{
+            minHeight: 44,
             border: `2px dashed ${dragOver ? "rgba(249,168,201,0.7)" : "rgba(160,190,210,0.2)"}`,
             background: dragOver ? "rgba(249,168,201,0.05)" : "transparent",
           }}
@@ -113,6 +114,7 @@ export default function MedicalRecordsPage() {
             accept=".pdf,.jpg,.jpeg,.png"
             className="sr-only"
             onChange={handleFileChange}
+            capture={undefined}
           />
         </label>
       </GlassCard>

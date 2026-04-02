@@ -30,6 +30,11 @@ function decodeSFLOAT(bytes: DataView, offset: number): number {
   return signedMantissa * 10 ** signedExp;
 }
 
+const isIOS = () =>
+  typeof navigator !== "undefined" &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+  !(window as any).MSStream;
+
 export function useBluetoothHealth() {
   const [state, setState] = useState<BluetoothHealthState>({
     heartRate: null,
@@ -37,7 +42,8 @@ export function useBluetoothHealth() {
     sleep: null,
     connectionStatus: "disconnected",
     deviceName: null,
-    isSupported: typeof navigator !== "undefined" && "bluetooth" in navigator,
+    isSupported:
+      typeof navigator !== "undefined" && "bluetooth" in navigator && !isIOS(),
     errorMessage: null,
   });
 
@@ -68,6 +74,11 @@ export function useBluetoothHealth() {
   }, []);
 
   const connect = useCallback(async () => {
+    if (isIOS()) {
+      setState((prev) => ({ ...prev, isSupported: false }));
+      return;
+    }
+
     if (!("bluetooth" in navigator)) {
       setState((prev) => ({ ...prev, isSupported: false }));
       return;

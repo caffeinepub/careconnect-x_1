@@ -50,8 +50,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className="flex flex-col h-screen transition-all duration-300 flex-shrink-0"
+      className="flex flex-col transition-all duration-300 flex-shrink-0"
       style={{
+        height: "100dvh",
         width: collapsed ? 72 : 240,
         background: "linear-gradient(180deg, #080808 0%, #060606 100%)",
         borderRight: "1px solid rgba(255,255,255,0.08)",
@@ -77,12 +78,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           data-ocid="sidebar.toggle"
           onClick={onToggle}
           className="p-1.5 rounded-lg text-[#888888] hover:text-pink-300 hover:bg-[rgba(249,168,201,0.1)] transition-all"
+          style={{
+            minWidth: 44,
+            minHeight: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>
 
-      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+      <nav
+        className="flex-1 px-3 py-2 space-y-1"
+        style={{
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch" as any,
+        }}
+      >
         {navItems.map((item) => {
           const isActive = currentPath === item.path;
           return (
@@ -95,6 +109,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   ? "nav-active"
                   : "text-[#888888] hover:text-[#cccccc] hover:bg-[rgba(255,255,255,0.04)]"
               }`}
+              style={{ minHeight: 44 }}
             >
               <item.icon size={18} className="flex-shrink-0" />
               {!collapsed && (
@@ -121,12 +136,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <div
         className="p-3 space-y-1"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+        }}
       >
         <button
           type="button"
           onClick={() => navigate({ to: "/admin" })}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[#888888] hover:text-[#cccccc] hover:bg-[rgba(255,255,255,0.04)] transition-all"
+          style={{ minHeight: 44 }}
         >
           <ShieldCheck size={18} className="flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Admin</span>}
@@ -136,6 +155,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           data-ocid="sidebar.logout.button"
           onClick={() => navigate({ to: "/" })}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[#888888] hover:text-[#FF4D5A] hover:bg-[rgba(255,77,90,0.08)] transition-all"
+          style={{ minHeight: 44 }}
         >
           <LogOut size={18} className="flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Logout</span>}

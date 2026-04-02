@@ -326,14 +326,17 @@ export default function FloatingChatbot() {
   }, []);
 
   return (
-    <div className="absolute bottom-6 right-6 z-50">
+    <div
+      className="absolute right-6 z-50"
+      style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+    >
       {open && (
         <div
           data-ocid="chatbot.panel"
           className="absolute bottom-16 right-0 animate-slideUp"
           style={{
-            width: "340px",
-            height: "480px",
+            width: "min(340px, calc(100vw - 3rem))",
+            height: "min(480px, 70dvh)",
             background: "#0a0a0a",
             border: "1px solid rgba(56,230,208,0.3)",
             borderRadius: "16px",

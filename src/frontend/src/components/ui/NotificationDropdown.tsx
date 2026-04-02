@@ -1,5 +1,6 @@
 import { Bell, CheckCheck, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type AppNotification,
   useNotifications,
@@ -30,8 +31,21 @@ export default function NotificationDropdown() {
   } = useNotifications();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Notification | null>(null);
+  const [panelPos, setPanelPos] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const unread = unreadCount;
+
+  // Calculate panel position from button's screen coordinates
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPanelPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [open]);
 
   const handleClickNotification = (n: Notification) => {
     markRead(n.id);
@@ -47,12 +61,20 @@ export default function NotificationDropdown() {
     <div className="relative">
       {/* Bell button */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => {
           setOpen(!open);
           setSelected(null);
         }}
         className="relative p-2 rounded-xl text-[#cccccc] hover:text-[#f9a8c9] hover:bg-[rgba(249,168,201,0.1)] transition-all"
+        style={{
+          minWidth: 44,
+          minHeight: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
         aria-label="Notifications"
       >
         <Bell size={18} />
@@ -63,176 +85,347 @@ export default function NotificationDropdown() {
         )}
       </button>
 
-      {open && (
-        <>
-          {/* Opaque backdrop — dims all other UI and blocks interaction */}
-          <div
-            className="fixed inset-0 z-[9998]"
-            style={{ background: "rgba(0,0,0,0.75)" }}
-            onClick={handleClose}
-            onKeyDown={(e) => e.key === "Escape" && handleClose()}
-            role="button"
-            tabIndex={-1}
-            aria-label="Close notifications"
-          />
+      {open &&
+        createPortal(
+          <>
+            {/* Full-screen opaque backdrop — blocks all other UI interaction */}
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9998,
+                background: "rgba(0, 0, 0, 0.80)",
+              }}
+              onClick={handleClose}
+              onKeyDown={(e) => e.key === "Escape" && handleClose()}
+              role="button"
+              tabIndex={-1}
+              aria-label="Close notifications"
+            />
 
-          {/* Panel — z-[9999] keeps it on top of the backdrop */}
-          <div
-            className="absolute right-0 top-full mt-2 w-80 z-[9999] rounded-2xl overflow-hidden shadow-2xl"
-            style={{
-              background: "#111111",
-              border: "1px solid rgba(249,168,201,0.25)",
-              boxShadow:
-                "0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(249,168,201,0.1)",
-            }}
-          >
-            {selected ? (
-              /* Detail view */
-              <div>
-                <div
-                  className="flex items-center gap-2 px-4 py-3"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    className="text-[#888] hover:text-white transition-colors text-xs flex items-center gap-1"
+            {/* Notification panel — solid, fully opaque */}
+            <div
+              style={{
+                position: "fixed",
+                top: panelPos.top,
+                right: panelPos.right,
+                zIndex: 9999,
+                width: 320,
+                borderRadius: 16,
+                overflow: "hidden",
+                background: "#111111",
+                border: "1px solid rgba(249,168,201,0.3)",
+                boxShadow:
+                  "0 24px 64px rgba(0,0,0,0.9), 0 0 0 1px rgba(249,168,201,0.1)",
+              }}
+            >
+              {selected ? (
+                /* Detail view */
+                <div style={{ background: "#111111" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "12px 16px",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      background: "#111111",
+                    }}
                   >
-                    ← Back
-                  </button>
-                  <span className="text-sm font-semibold text-white ml-auto">
-                    Notification Detail
-                  </span>
-                </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ background: typeColors[selected.type] }}
-                    />
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                    <button
+                      type="button"
+                      onClick={() => setSelected(null)}
                       style={{
-                        background: `${typeColors[selected.type]}22`,
-                        color: typeColors[selected.type],
+                        color: "#888",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
                       }}
                     >
-                      {typeLabels[selected.type]}
+                      ← Back
+                    </button>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "#ffffff",
+                        marginLeft: "auto",
+                      }}
+                    >
+                      Notification Detail
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-white mb-2">
-                    {selected.title}
-                  </h3>
-                  <p className="text-sm text-[#cccccc] leading-relaxed mb-4">
-                    {selected.message}
-                  </p>
-                  <p className="text-[11px] text-[#666]">{selected.time}</p>
-                </div>
-              </div>
-            ) : (
-              /* List view */
-              <>
-                {/* Header */}
-                <div
-                  className="flex items-center justify-between px-4 py-3"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <div>
-                    <h3 className="text-sm font-bold text-white">
-                      Notifications
+                  <div style={{ padding: 20, background: "#111111" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: "50%",
+                          background: typeColors[selected.type],
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 2,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: `${typeColors[selected.type]}22`,
+                          color: typeColors[selected.type],
+                        }}
+                      >
+                        {typeLabels[selected.type]}
+                      </span>
+                    </div>
+                    <h3
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#ffffff",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {selected.title}
                     </h3>
-                    <p className="text-[11px] text-[#f9a8c9] mt-0.5">
-                      {unread > 0 ? `${unread} unread` : "All caught up"}
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "#cccccc",
+                        lineHeight: 1.6,
+                        marginBottom: 16,
+                      }}
+                    >
+                      {selected.message}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#666" }}>
+                      {selected.time}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {unread > 0 && (
+                </div>
+              ) : (
+                /* List view */
+                <div style={{ background: "#111111" }}>
+                  {/* Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      background: "#111111",
+                    }}
+                  >
+                    <div>
+                      <h3
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "#ffffff",
+                          margin: 0,
+                        }}
+                      >
+                        Notifications
+                      </h3>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "#f9a8c9",
+                          marginTop: 2,
+                        }}
+                      >
+                        {unread > 0 ? `${unread} unread` : "All caught up"}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {unread > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllRead}
+                          title="Mark all as read"
+                          style={{
+                            padding: 6,
+                            borderRadius: 8,
+                            color: "#888",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <CheckCheck size={14} />
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={markAllRead}
-                        className="p-1.5 rounded-lg text-[#888] hover:text-[#f9a8c9] hover:bg-[rgba(249,168,201,0.1)] transition-all"
-                        title="Mark all as read"
+                        onClick={handleClose}
+                        style={{
+                          padding: 6,
+                          borderRadius: 8,
+                          color: "#888",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
                       >
-                        <CheckCheck size={14} />
+                        <X size={14} />
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Notification list */}
+                  <div
+                    style={{
+                      maxHeight: 288,
+                      overflowY: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      background: "#111111",
+                    }}
+                  >
+                    {items.length === 0 ? (
+                      <div
+                        style={{
+                          padding: "32px 16px",
+                          textAlign: "center",
+                          color: "#555",
+                          fontSize: 13,
+                          background: "#111111",
+                        }}
+                      >
+                        No notifications yet
+                      </div>
+                    ) : (
+                      items.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => handleClickNotification(n)}
+                          style={{
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "12px 16px",
+                            borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            background: !n.read
+                              ? "rgba(249,168,201,0.07)"
+                              : "#111111",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "block",
+                          }}
+                          onMouseEnter={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = "rgba(249,168,201,0.12)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = !n.read
+                              ? "rgba(249,168,201,0.07)"
+                              : "#111111";
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 12,
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background: typeColors[n.type],
+                                flexShrink: 0,
+                                marginTop: 4,
+                              }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: !n.read ? "#ffffff" : "#aaaaaa",
+                                  margin: 0,
+                                }}
+                              >
+                                {n.title}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  color: "#888",
+                                  marginTop: 2,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {n.message}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 10,
+                                  color: "#555",
+                                  marginTop: 4,
+                                }}
+                              >
+                                {n.time}
+                              </p>
+                            </div>
+                            {!n.read && (
+                              <div
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
+                                  background: "#f9a8c9",
+                                  flexShrink: 0,
+                                  marginTop: 6,
+                                }}
+                              />
+                            )}
+                          </div>
+                        </button>
+                      ))
                     )}
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      className="p-1.5 rounded-lg text-[#888] hover:text-white hover:bg-[rgba(255,255,255,0.08)] transition-all"
-                    >
-                      <X size={14} />
-                    </button>
+                  </div>
+
+                  {/* Footer */}
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      borderTop: "1px solid rgba(255,255,255,0.05)",
+                      background: "#111111",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "#555" }}>
+                      Click a notification to view details
+                    </span>
                   </div>
                 </div>
-
-                {/* List */}
-                <div className="max-h-72 overflow-y-auto">
-                  {items.map((n) => (
-                    <button
-                      key={n.id}
-                      type="button"
-                      className="w-full text-left px-4 py-3 transition-colors"
-                      style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        background: !n.read
-                          ? "rgba(249,168,201,0.04)"
-                          : "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "rgba(249,168,201,0.08)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = !n.read
-                          ? "rgba(249,168,201,0.04)"
-                          : "transparent";
-                      }}
-                      onClick={() => handleClickNotification(n)}
-                    >
-                      <div className="flex gap-3 items-start">
-                        <div
-                          className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                          style={{ background: typeColors[n.type] }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-xs font-semibold ${!n.read ? "text-white" : "text-[#aaaaaa]"}`}
-                          >
-                            {n.title}
-                          </p>
-                          <p className="text-[11px] text-[#888] mt-0.5 truncate">
-                            {n.message}
-                          </p>
-                          <p className="text-[10px] text-[#555] mt-1">
-                            {n.time}
-                          </p>
-                        </div>
-                        {!n.read && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#f9a8c9] flex-shrink-0 mt-2" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Footer */}
-                <div
-                  className="px-4 py-3 text-center"
-                  style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-                >
-                  <span className="text-[11px] text-[#555]">
-                    Click a notification to view details
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
+              )}
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

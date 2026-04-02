@@ -8,14 +8,20 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-app">
+    <div className="flex overflow-hidden bg-app" style={{ height: "100dvh" }}>
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
       />
       <div className="relative flex flex-col flex-1 min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main
+          className="flex-1 p-6"
+          style={{
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch" as any,
+          }}
+        >
           <Outlet />
         </main>
         <FloatingChatbot />

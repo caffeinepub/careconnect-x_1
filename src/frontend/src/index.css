@@ -396,3 +396,37 @@ html.light-mode .divide-y > * + * {
 html.light-mode ::-webkit-scrollbar-thumb {
   background: rgba(249, 168, 201, 0.5);
 }
+
+/* ── iOS / Mobile Compatibility ── */
+body {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area insets for iPhone notch/home indicator */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS momentum scrolling */
+.scroll-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Prevent iOS input zoom (font-size must be >= 16px) */
+input:not([type="range"]),
+select,
+textarea {
+  font-size: max(16px, 1em) !important;
+}

@@ -23,6 +23,11 @@ import GlassCard from "../components/ui/GlassCard";
 import { appointments, prescriptions, recentActivity } from "../data/dummyData";
 import { useBluetoothHealth } from "../hooks/useBluetoothHealth";
 
+const isIOS = () =>
+  typeof navigator !== "undefined" &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+  !(window as any).MSStream;
+
 const activityIcons: Record<string, React.ReactNode> = {
   consultation: <Stethoscope size={14} />,
   record: <FileText size={14} />,
@@ -291,11 +296,14 @@ export default function DashboardPage() {
                 />
                 <div>
                   <p className="text-xs font-semibold text-[#EF4444]">
-                    Web Bluetooth Not Supported
+                    {isIOS()
+                      ? "Bluetooth Not Available on iPhone/iPad"
+                      : "Web Bluetooth Not Supported"}
                   </p>
                   <p className="text-[11px] text-[#888888] mt-0.5">
-                    Please use Chrome or Edge on Android or desktop to connect a
-                    Bluetooth health device.
+                    {isIOS()
+                      ? "Apple does not support Web Bluetooth on iOS. To connect a health device, use Chrome or Edge on Android or a desktop computer."
+                      : "Please use Chrome or Edge on Android or desktop to connect a Bluetooth health device."}
                   </p>
                 </div>
               </div>
