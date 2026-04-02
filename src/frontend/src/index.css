@@ -60,17 +60,17 @@
     --card: 0.98 0 0;
     --card-foreground: 0.1 0 0;
     --muted: 0.92 0 0;
-    --muted-foreground: 0.45 0 0;
+    --muted-foreground: 0.3 0 0;
     --border: 0.88 0 0;
     --input: 0.9 0 0;
-    --card-bg: rgba(255, 255, 255, 0.72);
-    --bg-primary: #f5f5f5;
-    --bg-secondary: #ebebeb;
-    --bg-sidebar: #e8e8e8;
+    --card-bg: rgba(239, 246, 255, 0.85);
+    --bg-primary: #eff6ff;
+    --bg-secondary: #dbeafe;
+    --bg-sidebar: #e0edff;
     --border-subtle: rgba(0, 0, 0, 0.1);
     --text-primary: #1a1a1a;
-    --text-secondary: #444444;
-    --text-muted: #777777;
+    --text-secondary: #222222;
+    --text-muted: #4a4a4a;
   }
 
   * {
@@ -314,29 +314,29 @@
 
 /* ── Light Mode Overrides ── */
 html.light-mode body {
-  background: #f0f0f0;
+  background: #eff6ff;
   color: #1a1a1a;
 }
 
 html.light-mode .bg-app {
-  background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 50%, #ebebeb 100%);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #e0edff 100%);
 }
 
 html.light-mode .glass-card {
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(239, 246, 255, 0.85) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
 html.light-mode header,
 html.light-mode [role="banner"] {
-  background: rgba(240, 240, 240, 0.95) !important;
+  background: rgba(239, 246, 255, 0.95) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
 html.light-mode nav,
 html.light-mode aside {
-  background: rgba(235, 235, 235, 0.95) !important;
+  background: rgba(219, 234, 254, 0.95) !important;
   border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
@@ -345,19 +345,19 @@ html.light-mode .text-\[\#ffffff\] {
   color: #1a1a1a !important;
 }
 html.light-mode .text-\[\#cccccc\] {
-  color: #444444 !important;
+  color: #1a1a1a !important;
 }
 html.light-mode .text-\[\#888888\] {
-  color: #666666 !important;
+  color: #333333 !important;
 }
 html.light-mode .text-\[\#F2F6FF\] {
   color: #1a1a1a !important;
 }
 html.light-mode .text-\[\#7F8A9B\] {
-  color: #555555 !important;
+  color: #1e1e1e !important;
 }
 html.light-mode .text-\[\#4A5568\] {
-  color: #777777 !important;
+  color: #444444 !important;
 }
 
 /* Input / select backgrounds */
@@ -370,7 +370,7 @@ html.light-mode textarea {
 }
 html.light-mode input::placeholder,
 html.light-mode textarea::placeholder {
-  color: #999999 !important;
+  color: #666666 !important;
 }
 
 /* Nav active item in light mode */

@@ -15,6 +15,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 const navItems = [
   {
@@ -47,6 +48,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+  const { theme } = useTheme();
 
   return (
     <aside
@@ -62,9 +64,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         className="flex items-center gap-3 p-4 h-16"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-pink-300 to-pink-400">
-          <HeartPulse size={18} className="text-black" />
-        </div>
+        {theme === "light" ? (
+          <img
+            src="/assets/generated/careconnect-logo-light-transparent.dim_72x72.png"
+            alt="CareConnect X"
+            className="w-9 h-9 rounded-xl object-contain flex-shrink-0"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-pink-300 to-pink-400">
+            <HeartPulse size={18} className="text-black" />
+          </div>
+        )}
         {!collapsed && (
           <span className="text-sm font-bold text-white whitespace-nowrap">
             CareConnect <span className="text-pink-300">X</span>
