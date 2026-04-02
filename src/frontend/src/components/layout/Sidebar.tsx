@@ -84,7 +84,50 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {/* Dashboard link — always first */}
+        {navItems.slice(0, 1).map((item) => {
+          const isActive = currentPath === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              data-ocid={`sidebar.${item.label.toLowerCase().replace(" ", "_")}.link`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                isActive
+                  ? "nav-active"
+                  : "text-[#888888] hover:text-[#cccccc] hover:bg-[rgba(255,255,255,0.04)]"
+              }`}
+            >
+              <item.icon size={18} className="flex-shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-medium whitespace-nowrap flex-1">
+                  {item.label}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+
+        {/* Notification row — placed right after Dashboard */}
+        <div
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-[rgba(249,168,201,0.06)] ${
+            collapsed ? "justify-center" : ""
+          }`}
+          style={{
+            border: "1px solid rgba(249,168,201,0.18)",
+            background: "rgba(249,168,201,0.04)",
+          }}
+        >
+          <NotificationDropdown />
+          {!collapsed && (
+            <span className="text-sm font-medium text-[#cccccc] whitespace-nowrap">
+              Notifications
+            </span>
+          )}
+        </div>
+
+        {/* Remaining nav items */}
+        {navItems.slice(1).map((item) => {
           const isActive = currentPath === item.path;
           return (
             <Link
@@ -118,24 +161,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </Link>
           );
         })}
-
-        {/* Notification row — placed after nav items, near Dashboard */}
-        <div
-          className={`flex items-center rounded-xl transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] ${
-            collapsed ? "justify-center px-0" : "px-0"
-          }`}
-        >
-          {collapsed ? (
-            <NotificationDropdown />
-          ) : (
-            <div className="flex items-center gap-3 w-full">
-              <NotificationDropdown />
-              <span className="text-sm font-medium text-[#888888] whitespace-nowrap">
-                Notifications
-              </span>
-            </div>
-          )}
-        </div>
       </nav>
 
       <div
