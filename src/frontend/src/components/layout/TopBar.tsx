@@ -1,7 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Calendar, Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
-import NotificationDropdown from "../ui/NotificationDropdown";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -57,7 +56,6 @@ export default function TopBar() {
         >
           <Calendar size={18} />
         </button>
-        <NotificationDropdown />
         <button
           type="button"
           data-ocid="topbar.theme.toggle"

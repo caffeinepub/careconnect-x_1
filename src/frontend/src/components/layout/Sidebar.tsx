@@ -15,6 +15,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import NotificationDropdown from "../ui/NotificationDropdown";
 
 const navItems = [
   {
@@ -117,6 +118,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </Link>
           );
         })}
+
+        {/* Notification row — placed after nav items, near Dashboard */}
+        <div
+          className={`flex items-center rounded-xl transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] ${
+            collapsed ? "justify-center px-0" : "px-0"
+          }`}
+        >
+          {collapsed ? (
+            <NotificationDropdown />
+          ) : (
+            <div className="flex items-center gap-3 w-full">
+              <NotificationDropdown />
+              <span className="text-sm font-medium text-[#888888] whitespace-nowrap">
+                Notifications
+              </span>
+            </div>
+          )}
+        </div>
       </nav>
 
       <div

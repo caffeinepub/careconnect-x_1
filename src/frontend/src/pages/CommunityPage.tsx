@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import GlassCard from "../components/ui/GlassCard";
 import RippleButton from "../components/ui/RippleButton";
+import { useNotifications } from "../context/NotificationContext";
 import { helpRequests, volunteers } from "../data/dummyData";
 
 const statusConfig: Record<string, { color: string; bg: string }> = {
@@ -73,6 +74,8 @@ export default function CommunityPage() {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const { addNotification } = useNotifications();
+
   const selectVolunteer = (reqId: number, volunteerName: string) => {
     setRequestStates((prev) => ({
       ...prev,
@@ -82,6 +85,12 @@ export default function CommunityPage() {
         successMsg: "✓ Volunteer assigned!",
       },
     }));
+    addNotification({
+      type: "success",
+      title: "Volunteer Assigned",
+      message: `${volunteerName} has accepted your request`,
+      route: "/community",
+    });
     setTimeout(() => {
       setRequestStates((prev) => ({
         ...prev,

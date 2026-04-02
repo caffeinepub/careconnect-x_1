@@ -1,8 +1,11 @@
 import { Bell, CheckCheck, X } from "lucide-react";
 import { useState } from "react";
-import { notifications as initialNotifications } from "../../data/dummyData";
+import {
+  type AppNotification,
+  useNotifications,
+} from "../../context/NotificationContext";
 
-type Notification = (typeof initialNotifications)[number];
+type Notification = AppNotification;
 
 const typeColors: Record<string, string> = {
   success: "#4ade80",
@@ -19,22 +22,19 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function NotificationDropdown() {
+  const {
+    notifications: items,
+    markRead,
+    markAllRead,
+    unreadCount,
+  } = useNotifications();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<Notification[]>(() =>
-    initialNotifications.map((n) => ({ ...n })),
-  );
   const [selected, setSelected] = useState<Notification | null>(null);
 
-  const unread = items.filter((n) => !n.read).length;
-
-  const markAllRead = () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  const unread = unreadCount;
 
   const handleClickNotification = (n: Notification) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)),
-    );
+    markRead(n.id);
     setSelected({ ...n, read: true });
   };
 

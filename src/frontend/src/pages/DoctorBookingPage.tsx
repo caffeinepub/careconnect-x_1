@@ -3,6 +3,7 @@ import { CheckCircle, ChevronLeft, Clock, Search, Star, X } from "lucide-react";
 import { useState } from "react";
 import GlassCard from "../components/ui/GlassCard";
 import RippleButton from "../components/ui/RippleButton";
+import { useNotifications } from "../context/NotificationContext";
 import { doctors } from "../data/dummyData";
 
 const specialties = [
@@ -39,10 +40,22 @@ function BookingModal({ doctor, onClose }: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const { addNotification } = useNotifications();
 
   const handleConfirm = () => {
     if (!selectedSlot || !selectedDate) return;
     setConfirmed(true);
+    const formattedDate = selectedDate.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+    addNotification({
+      type: "success",
+      title: "Appointment Confirmed",
+      message: `${doctor.name} booked for ${formattedDate} at ${selectedSlot}`,
+      route: "/doctors",
+    });
     setTimeout(onClose, 2500);
   };
 

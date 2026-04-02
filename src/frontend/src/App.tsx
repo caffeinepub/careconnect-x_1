@@ -6,6 +6,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import AppLayout from "./components/layout/AppLayout";
+import { NotificationProvider } from "./context/NotificationContext";
 import AdminPage from "./pages/AdminPage";
 import AuthPage from "./pages/AuthPage";
 import CommunityPage from "./pages/CommunityPage";
@@ -120,8 +121,10 @@ declare module "@tanstack/react-router" {
 
 export default function App() {
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <RouterProvider router={router} />
-    </div>
+    <NotificationProvider>
+      <div style={{ minHeight: "100vh" }}>
+        <RouterProvider router={router} />
+      </div>
+    </NotificationProvider>
   );
 }

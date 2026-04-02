@@ -7,6 +7,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useNotifications } from "../context/NotificationContext";
 
 type Severity = "Low" | "Medium" | "High";
 
@@ -136,6 +137,7 @@ export default function FirstAidPage() {
   const [result, setResult] = useState<FirstAidResult | null>(null);
   const [filename, setFilename] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const { addNotification } = useNotifications();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -145,8 +147,20 @@ export default function FirstAidPage() {
     setResult(null);
     setIsAnalyzing(true);
     setTimeout(() => {
-      setResult(detectWoundType(file.name));
+      const detected = detectWoundType(file.name);
+      setResult(detected);
       setIsAnalyzing(false);
+      const typeMap: Record<string, "info" | "warning" | "error"> = {
+        Low: "info",
+        Medium: "warning",
+        High: "error",
+      };
+      addNotification({
+        type: typeMap[detected.severity] ?? "info",
+        title: "First Aid Scan Complete",
+        message: `${detected.woundType} — ${detected.severity} severity detected`,
+        route: "/first-aid",
+      });
     }, 2200);
   }
 
