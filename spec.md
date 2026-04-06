@@ -2,61 +2,43 @@
 
 ## Current State
 
-Full-featured healthcare app with 9 screens: Dashboard, AI Symptom Checker, Doctor Booking, Emergency, Admin, First Aid AI, Medicine Delivery, Medical Records, Community. Built in React with TanStack Router, Tailwind, black/white/pink theme. Features include: Web Bluetooth health metrics, OpenStreetMap hospital search, simulated AI chatbot, notification panel with portal rendering, dark/light theme toggle.
-
-Current `index.html` viewport meta: `<meta name="viewport" content="width=device-width, initial-scale=1.0" />` — missing iOS-specific attributes.
-
-Known iOS gaps:
-- No `maximum-scale` or `user-scalable` to prevent zoom-on-focus
-- No `viewport-fit=cover` for notch/safe area support
-- Web Bluetooth not supported on iOS — button fails silently
-- `position: fixed` elements (sidebar, topbar, notification panel, chatbot) may misbehave on iOS Safari dynamic toolbar
-- No safe-area-inset padding for notch/home indicator
-- Touch targets may be under 44px on some buttons
-- Hover-only CSS states don't translate to touch
-- File inputs for First Aid and Medical Records may lack `capture` attribute for iOS camera
-- AppLayout uses `h-screen` which may not account for iOS Safari's dynamic toolbar
+Dashboard already has:
+- Web Bluetooth connect/disconnect flow (useBluetoothHealth hook)
+- HeartRateTile showing live bpm from Bluetooth characteristic
+- BloodPressureTile showing systolic/diastolic from Bluetooth characteristic
+- SleepTile with manual input when not connected
+- Basic healthScore() function that averages metric scores — but only runs when `isConnected === true`, so sleep score is ignored unless connected
+- Score displayed as a raw number (e.g. "87") next to the Health Overview card title
+- No visual score breakdown, no per-metric status labels, no badge/tier system
 
 ## Requested Changes (Diff)
 
 ### Add
-- iOS detection utility (`isIOS()`) to detect iPhone/iPad
-- Safe area inset CSS using `env(safe-area-inset-*)` in index.css
-- iOS Bluetooth unsupported message in DashboardPage (detect iOS and show specific message instead of generic Web Bluetooth unsupported message)
-- `viewport-fit=cover` to viewport meta tag
-- `maximum-scale=1` to prevent zoom on input focus on iOS
-- `-webkit-overflow-scrolling: touch` on scrollable containers
-- Touch-friendly CSS: `touch-action: manipulation` on all interactive buttons
-- `min-h-dvh` / `dvh` units for full-height containers that avoid iOS Safari toolbar issues
-- `capture="environment"` on file inputs in FirstAidPage and MedicalRecordsPage for iOS camera
-- iOS-compatible font size: ensure all form inputs have `font-size: 16px` minimum to prevent zoom
+- Per-metric status indicator (Good / Fair / Low) on each tile using standard medical thresholds
+- Health Score card that shows:
+  - Total score out of 100 (weighted: heart rate 35%, blood pressure 35%, sleep 30%)
+  - Color-coded tier: Excellent (≥85, green), Good (70–84, amber), Needs Attention (<70, red)
+  - Badge label ("Excellent Health", "Good Health", "Needs Attention")
+  - Score breakdown showing contribution of each metric
+  - Animated progress ring/bar for the total score
+- Sleep score included in calculation even when NOT connected (manual entry always counts)
+- "Complete your health check" prompt when one or more metrics are missing
+- Health score also updates when sleep is entered manually
 
 ### Modify
-- `index.html`: Update viewport meta to include `viewport-fit=cover` and `maximum-scale=1, user-scalable=no`
-- `index.css`: Add safe-area-inset padding to `.bg-app` and `body`, add `-webkit-overflow-scrolling: touch` helpers, add `touch-action: manipulation` to buttons globally
-- `AppLayout.tsx`: Change `h-screen` to use `min-h-dvh` / `h-dvh` for iOS Safari toolbar compatibility; ensure sidebar and main content area scroll correctly
-- `useBluetoothHealth.ts`: Add iOS detection — if iOS device, set `isSupported: false` immediately with iOS-specific reason
-- `DashboardPage.tsx`: Show iOS-specific message ("Bluetooth not available on iPhone/iPad — Apple does not support Web Bluetooth. Use Android or desktop Chrome instead.") when iOS is detected
-- `Sidebar.tsx`: Ensure sidebar scroll is `-webkit-overflow-scrolling: touch` compatible; sidebar width on mobile should overlay (not push content)
-- `TopBar.tsx`: Ensure header is safe-area-inset-top aware on iPhone notch
-- `EmergencyPage.tsx`: Add iOS Safari geolocation permission guidance (iOS requires HTTPS and explicit permission; add friendly message if denied)
-- `FloatingChatbot.tsx`: Ensure floating panel does not overlap iOS home indicator by respecting `env(safe-area-inset-bottom)`
-- `NotificationDropdown.tsx`: Ensure portal panel works with iOS Safari (no `backdrop-filter` fallback issues)
-- All buttons: Add `style={{ touchAction: 'manipulation' }}` or CSS class to prevent 300ms tap delay on iOS
+- healthScore() — split into per-metric scoring with labels; sleep score always counted (not gated on isConnected)
+- HeartRateTile — add status badge (Good/Fair/Low) based on bpm value
+- BloodPressureTile — add status badge based on systolic/diastolic
+- SleepTile — add status badge based on hours entered; always allow manual input regardless of connection state
+- Health Score display — replace bare number with rich score card with ring, badge, and breakdown
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
 
-1. Update `index.html` viewport meta for iOS safe area and zoom prevention
-2. Add iOS detection helper inline or as a small utility
-3. Update `index.css` with safe-area-inset support, touch-action globally, -webkit-overflow-scrolling
-4. Update `AppLayout.tsx` to use dvh units for iOS Safari toolbar fix
-5. Update `useBluetoothHealth.ts` to detect iOS and set isSupported false with iOS reason
-6. Update `DashboardPage.tsx` to show iOS-specific Bluetooth message
-7. Update `FloatingChatbot.tsx` to respect safe-area-inset-bottom
-8. Update `TopBar.tsx` to respect safe-area-inset-top
-9. Update `FirstAidPage.tsx` and `MedicalRecordsPage.tsx` file inputs with capture attribute and 16px font
-10. Ensure all inputs have font-size >= 16px to prevent iOS auto-zoom
-11. Validate build passes
+1. Update healthScore logic: make sleep scoring independent of Bluetooth connection, compute per-metric scores and labels
+2. Add status badge to HeartRateTile, BloodPressureTile, SleepTile
+3. Replace bare score number with an animated score card: circular progress indicator, color-coded badge, per-metric breakdown list
+4. Allow sleep manual input always (not just when disconnected)
+5. Show "Enter sleep hours to complete your health check" prompt when sleep is null

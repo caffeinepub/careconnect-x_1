@@ -51,6 +51,90 @@ function PulsingDot({ color }: { color: string }) {
   );
 }
 
+// --- Status badge helper ---
+type MetricStatusType = "good" | "fair" | "low" | "elevated" | "high";
+
+const STATUS_COLORS: Record<
+  MetricStatusType,
+  { bg: string; text: string; border: string }
+> = {
+  good: {
+    bg: "rgba(34,197,94,0.15)",
+    text: "#22C55E",
+    border: "rgba(34,197,94,0.3)",
+  },
+  fair: {
+    bg: "rgba(245,158,11,0.15)",
+    text: "#F59E0B",
+    border: "rgba(245,158,11,0.3)",
+  },
+  low: {
+    bg: "rgba(239,68,68,0.15)",
+    text: "#EF4444",
+    border: "rgba(239,68,68,0.3)",
+  },
+  elevated: {
+    bg: "rgba(245,158,11,0.15)",
+    text: "#F59E0B",
+    border: "rgba(245,158,11,0.3)",
+  },
+  high: {
+    bg: "rgba(239,68,68,0.15)",
+    text: "#EF4444",
+    border: "rgba(239,68,68,0.3)",
+  },
+};
+
+function StatusBadge({
+  label,
+  type,
+}: { label: string; type: MetricStatusType }) {
+  const c = STATUS_COLORS[type];
+  return (
+    <span
+      className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1"
+      style={{
+        background: c.bg,
+        color: c.text,
+        border: `1px solid ${c.border}`,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function getHeartRateStatus(hr: number): {
+  label: string;
+  type: MetricStatusType;
+} {
+  if (hr >= 60 && hr <= 100) return { label: "Good", type: "good" };
+  if ((hr >= 50 && hr < 60) || (hr > 100 && hr <= 110))
+    return { label: "Fair", type: "fair" };
+  return { label: "Low", type: "low" };
+}
+
+function getBPStatus(
+  systolic: number,
+  diastolic: number,
+): { label: string; type: MetricStatusType } {
+  if (systolic < 120 && diastolic < 80) return { label: "Good", type: "good" };
+  if (systolic < 130) return { label: "Elevated", type: "elevated" };
+  return { label: "High", type: "high" };
+}
+
+function getSleepStatus(hrs: number): {
+  label: string;
+  type: MetricStatusType;
+} {
+  if (hrs >= 7 && hrs <= 9) return { label: "Good", type: "good" };
+  if ((hrs >= 6 && hrs < 7) || (hrs > 9 && hrs <= 10))
+    return { label: "Fair", type: "fair" };
+  return { label: "Low", type: "low" };
+}
+
+// --- Metric tiles ---
+
 function HeartRateTile({ value }: { value: number | null }) {
   const prevRef = useRef<number | null>(null);
   const [bump, setBump] = useState(false);
@@ -63,6 +147,8 @@ function HeartRateTile({ value }: { value: number | null }) {
       return () => clearTimeout(t);
     }
   }, [value]);
+
+  const status = value !== null ? getHeartRateStatus(value) : null;
 
   return (
     <div
@@ -87,6 +173,7 @@ function HeartRateTile({ value }: { value: number | null }) {
         {value !== null ? value : "--"}
       </p>
       <p className="text-[10px] text-[#888888] mt-0.5">Heart Rate</p>
+      {status && <StatusBadge label={status.label} type={status.type} />}
       <p className="text-[9px] text-[#4A5568] mt-0.5">
         {value !== null ? "bpm" : "No data"}
       </p>
@@ -99,6 +186,8 @@ function BloodPressureTile({
   diastolic,
 }: { systolic: number | null; diastolic: number | null }) {
   const hasData = systolic !== null && diastolic !== null;
+  const status = hasData ? getBPStatus(systolic!, diastolic!) : null;
+
   return (
     <div
       className="rounded-xl p-3 text-center"
@@ -116,6 +205,7 @@ function BloodPressureTile({
         {hasData ? `${systolic}/${diastolic}` : "--"}
       </p>
       <p className="text-[10px] text-[#888888] mt-0.5">Blood Pressure</p>
+      {status && <StatusBadge label={status.label} type={status.type} />}
       <p className="text-[9px] text-[#4A5568] mt-0.5">
         {hasData ? "mmHg" : "No data"}
       </p>
@@ -125,7 +215,6 @@ function BloodPressureTile({
 
 function SleepTile({
   value,
-  connected,
   onManualInput,
 }: {
   value: number | null;
@@ -141,6 +230,8 @@ function SleepTile({
     onManualInput(Number.isFinite(n) && n >= 0 ? n : null);
   };
 
+  const status = value !== null ? getSleepStatus(value) : null;
+
   return (
     <div
       className="rounded-xl p-3 text-center"
@@ -149,43 +240,388 @@ function SleepTile({
       <Moon
         size={18}
         className="mx-auto mb-1"
-        style={{
-          color: "#A78BFA",
-          opacity: value !== null || !connected ? 1 : 0.5,
-        }}
+        style={{ color: "#A78BFA", opacity: 1 }}
       />
-      {!connected ? (
-        <>
-          {value !== null ? (
-            <p className="text-sm font-bold" style={{ color: "#A78BFA" }}>
-              {value}
-            </p>
-          ) : (
-            <input
-              type="number"
-              min="0"
-              max="24"
-              step="0.5"
-              value={inputVal}
-              onChange={handleChange}
-              placeholder="hrs"
-              className="w-full text-center text-sm font-bold bg-transparent outline-none border-b border-[#A78BFA]/30 focus:border-[#A78BFA] text-[#A78BFA] placeholder:text-[#555] mb-0.5"
-              data-ocid="sleep.input"
-            />
-          )}
-        </>
-      ) : (
-        <p
-          className="text-sm font-bold"
-          style={{ color: value !== null ? "#A78BFA" : "#888888" }}
-        >
-          {value !== null ? value : "--"}
+      {value !== null ? (
+        <p className="text-sm font-bold" style={{ color: "#A78BFA" }}>
+          {value}
         </p>
+      ) : (
+        <input
+          type="number"
+          min="0"
+          max="24"
+          step="0.5"
+          value={inputVal}
+          onChange={handleChange}
+          placeholder="hrs"
+          className="w-full text-center text-sm font-bold bg-transparent outline-none border-b border-[#A78BFA]/30 focus:border-[#A78BFA] text-[#A78BFA] placeholder:text-[#555] mb-0.5"
+          data-ocid="sleep.input"
+        />
       )}
       <p className="text-[10px] text-[#888888] mt-0.5">Sleep</p>
+      {status && <StatusBadge label={status.label} type={status.type} />}
       <p className="text-[9px] text-[#4A5568] mt-0.5">
-        {value !== null ? "hrs" : connected ? "No data" : "Log manually"}
+        {value !== null ? "hrs" : "Log manually"}
       </p>
+    </div>
+  );
+}
+
+// --- Health score computation ---
+
+interface MetricScore {
+  label: string;
+  points: number;
+  status: "good" | "fair" | "low" | "missing";
+  statusLabel: string;
+  weight: number;
+  icon: React.ReactNode;
+}
+
+function computeHealthScore(
+  heartRate: number | null,
+  bloodPressure: { systolic: number; diastolic: number } | null,
+  sleep: number | null,
+): { total: number | null; metrics: MetricScore[] } {
+  const metrics: MetricScore[] = [];
+
+  // Heart rate (35%)
+  if (heartRate !== null) {
+    let points = 0;
+    let status: MetricScore["status"] = "low";
+    let statusLabel = "Low";
+    if (heartRate >= 60 && heartRate <= 100) {
+      points = 100;
+      status = "good";
+      statusLabel = "Good";
+    } else if (
+      (heartRate >= 50 && heartRate < 60) ||
+      (heartRate > 100 && heartRate <= 110)
+    ) {
+      points = 70;
+      status = "fair";
+      statusLabel = "Fair";
+    } else {
+      points = 40;
+      status = "low";
+      statusLabel = "Low";
+    }
+    metrics.push({
+      label: "Heart Rate",
+      points,
+      status,
+      statusLabel,
+      weight: 0.35,
+      icon: <Heart size={13} />,
+    });
+  } else {
+    metrics.push({
+      label: "Heart Rate",
+      points: 0,
+      status: "missing",
+      statusLabel: "Not measured",
+      weight: 0.35,
+      icon: <Heart size={13} />,
+    });
+  }
+
+  // Blood pressure (35%)
+  if (bloodPressure) {
+    let points = 0;
+    let status: MetricScore["status"] = "low";
+    let statusLabel = "High";
+    if (bloodPressure.systolic < 120 && bloodPressure.diastolic < 80) {
+      points = 100;
+      status = "good";
+      statusLabel = "Good";
+    } else if (bloodPressure.systolic < 130) {
+      points = 70;
+      status = "fair";
+      statusLabel = "Elevated";
+    } else {
+      points = 40;
+      status = "low";
+      statusLabel = "High";
+    }
+    metrics.push({
+      label: "Blood Pressure",
+      points,
+      status,
+      statusLabel,
+      weight: 0.35,
+      icon: <Activity size={13} />,
+    });
+  } else {
+    metrics.push({
+      label: "Blood Pressure",
+      points: 0,
+      status: "missing",
+      statusLabel: "Not measured",
+      weight: 0.35,
+      icon: <Activity size={13} />,
+    });
+  }
+
+  // Sleep (30%)
+  if (sleep !== null) {
+    let points = 0;
+    let status: MetricScore["status"] = "low";
+    let statusLabel = "Low";
+    if (sleep >= 7 && sleep <= 9) {
+      points = 100;
+      status = "good";
+      statusLabel = "Good";
+    } else if ((sleep >= 6 && sleep < 7) || (sleep > 9 && sleep <= 10)) {
+      points = 70;
+      status = "fair";
+      statusLabel = "Fair";
+    } else {
+      points = 40;
+      status = "low";
+      statusLabel = "Low";
+    }
+    metrics.push({
+      label: "Sleep",
+      points,
+      status,
+      statusLabel,
+      weight: 0.3,
+      icon: <Moon size={13} />,
+    });
+  } else {
+    metrics.push({
+      label: "Sleep",
+      points: 0,
+      status: "missing",
+      statusLabel: "Not logged",
+      weight: 0.3,
+      icon: <Moon size={13} />,
+    });
+  }
+
+  const realMetrics = metrics.filter((m) => m.status !== "missing");
+  if (realMetrics.length === 0) return { total: null, metrics };
+
+  const totalWeight = realMetrics.reduce((s, m) => s + m.weight, 0);
+  const total = Math.round(
+    realMetrics.reduce((s, m) => s + m.points * m.weight, 0) / totalWeight,
+  );
+  return { total, metrics };
+}
+
+// --- SVG circular ring ---
+
+function ScoreRing({ score }: { score: number | null }) {
+  const radius = 40;
+  const strokeWidth = 8;
+  const circumference = 2 * Math.PI * radius;
+  const pct = score !== null ? Math.min(Math.max(score, 0), 100) : 0;
+  const offset = circumference - (pct / 100) * circumference;
+
+  let ringColor = "#888888";
+  if (score !== null) {
+    if (score >= 85) ringColor = "#22C55E";
+    else if (score >= 70) ringColor = "#F59E0B";
+    else ringColor = "#EF4444";
+  }
+
+  return (
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: 100, height: 100 }}
+    >
+      <svg
+        width={100}
+        height={100}
+        className="-rotate-90"
+        aria-label="Health score ring"
+        role="img"
+      >
+        {/* Track */}
+        <circle
+          cx={50}
+          cy={50}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress */}
+        <circle
+          cx={50}
+          cy={50}
+          r={radius}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{
+            transition: "stroke-dashoffset 0.8s ease, stroke 0.4s ease",
+          }}
+        />
+      </svg>
+      {/* Score in center */}
+      <div className="absolute inset-0 flex items-center justify-center flex-col">
+        <span
+          className="text-2xl font-bold leading-none"
+          style={{ color: score !== null ? ringColor : "#555" }}
+        >
+          {score !== null ? score : "--"}
+        </span>
+        {score !== null && (
+          <span className="text-[8px] text-[#888888] mt-0.5">/ 100</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Health Score Panel ---
+
+function HealthScorePanel({
+  heartRate,
+  bloodPressure,
+  sleep,
+}: {
+  heartRate: number | null;
+  bloodPressure: { systolic: number; diastolic: number } | null;
+  sleep: number | null;
+}) {
+  const { total, metrics } = computeHealthScore(
+    heartRate,
+    bloodPressure,
+    sleep,
+  );
+
+  let overallLabel = "";
+  let overallColor = "#888888";
+  if (total !== null) {
+    if (total >= 85) {
+      overallLabel = "Excellent Health";
+      overallColor = "#22C55E";
+    } else if (total >= 70) {
+      overallLabel = "Good Health";
+      overallColor = "#F59E0B";
+    } else {
+      overallLabel = "Needs Attention";
+      overallColor = "#EF4444";
+    }
+  }
+
+  const hasMissing = metrics.some((m) => m.status === "missing");
+
+  const statusChipStyle = (status: MetricScore["status"]) => {
+    if (status === "good")
+      return {
+        bg: "rgba(34,197,94,0.15)",
+        color: "#22C55E",
+        border: "rgba(34,197,94,0.3)",
+      };
+    if (status === "fair")
+      return {
+        bg: "rgba(245,158,11,0.15)",
+        color: "#F59E0B",
+        border: "rgba(245,158,11,0.3)",
+      };
+    if (status === "low")
+      return {
+        bg: "rgba(239,68,68,0.15)",
+        color: "#EF4444",
+        border: "rgba(239,68,68,0.3)",
+      };
+    return {
+      bg: "rgba(136,136,136,0.1)",
+      color: "#888888",
+      border: "rgba(136,136,136,0.2)",
+    };
+  };
+
+  return (
+    <div
+      className="rounded-xl p-4 mb-4"
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
+      data-ocid="health.score.panel"
+    >
+      <div className="flex items-center gap-4">
+        {/* Circular ring */}
+        <ScoreRing score={total} />
+
+        {/* Label + breakdown */}
+        <div className="flex-1 min-w-0">
+          {total !== null ? (
+            <>
+              <div
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold mb-2"
+                style={{
+                  background: `${overallColor}22`,
+                  color: overallColor,
+                  border: `1px solid ${overallColor}44`,
+                }}
+              >
+                {overallLabel}
+              </div>
+            </>
+          ) : (
+            <p className="text-[11px] text-[#888888] mb-2">
+              Connect device or log sleep to see your score
+            </p>
+          )}
+
+          {/* Per-metric breakdown rows */}
+          <div className="space-y-1.5">
+            {metrics.map((m) => {
+              const chip = statusChipStyle(m.status);
+              return (
+                <div key={m.label} className="flex items-center gap-2">
+                  <span
+                    style={{
+                      color:
+                        m.status === "missing"
+                          ? "#555"
+                          : overallColor === "#888888"
+                            ? "#888"
+                            : "#aaa",
+                    }}
+                  >
+                    {m.icon}
+                  </span>
+                  <span className="text-[10px] text-[#888888] w-24 flex-shrink-0">
+                    {m.label}
+                  </span>
+                  <span
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: chip.bg,
+                      color: chip.color,
+                      border: `1px solid ${chip.border}`,
+                    }}
+                  >
+                    {m.statusLabel}
+                  </span>
+                  {m.status !== "missing" && (
+                    <span className="text-[9px] text-[#555] ml-auto">
+                      {m.points}pts
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Missing metric hint */}
+          {hasMissing && (
+            <p className="text-[9px] text-[#666] mt-2">
+              ⚠ Connect device / enter sleep to get a full score
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -218,33 +654,6 @@ export default function DashboardPage() {
   const isConnected = connectionStatus === "connected";
   const isConnecting = connectionStatus === "connecting";
 
-  const healthScore = () => {
-    if (!isConnected) return null;
-    const scores: number[] = [];
-    if (heartRate !== null) {
-      const hrScore =
-        heartRate >= 60 && heartRate <= 100 ? 100 : heartRate < 60 ? 70 : 65;
-      scores.push(hrScore);
-    }
-    if (bloodPressure) {
-      const bpScore =
-        bloodPressure.systolic < 120 && bloodPressure.diastolic < 80
-          ? 100
-          : bloodPressure.systolic < 130
-            ? 80
-            : 60;
-      scores.push(bpScore);
-    }
-    if (sleep !== null) {
-      const sleepScore = sleep >= 7 && sleep <= 9 ? 100 : sleep >= 6 ? 80 : 60;
-      scores.push(sleepScore);
-    }
-    if (scores.length === 0) return null;
-    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  };
-
-  const score = healthScore();
-
   return (
     <div className="space-y-6 animate-fadeInUp">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -268,12 +677,6 @@ export default function DashboardPage() {
                 Health Score
               </h3>
             </div>
-            <span
-              className="text-3xl font-bold"
-              style={{ color: score !== null ? "#f9a8c9" : "#888888" }}
-            >
-              {score !== null ? score : "--"}
-            </span>
           </div>
 
           {/* Bluetooth Connection Panel */}
@@ -373,6 +776,13 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+          {/* Health Score Panel — below Bluetooth, above metric tiles */}
+          <HealthScorePanel
+            heartRate={heartRate}
+            bloodPressure={bloodPressure}
+            sleep={sleep}
+          />
 
           {/* Metric Tiles */}
           <div className="grid grid-cols-3 gap-3 mt-2">
