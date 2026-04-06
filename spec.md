@@ -1,44 +1,27 @@
 # CareConnect X
 
 ## Current State
-
-Dashboard already has:
-- Web Bluetooth connect/disconnect flow (useBluetoothHealth hook)
-- HeartRateTile showing live bpm from Bluetooth characteristic
-- BloodPressureTile showing systolic/diastolic from Bluetooth characteristic
-- SleepTile with manual input when not connected
-- Basic healthScore() function that averages metric scores — but only runs when `isConnected === true`, so sleep score is ignored unless connected
-- Score displayed as a raw number (e.g. "87") next to the Health Overview card title
-- No visual score breakdown, no per-metric status labels, no badge/tier system
+Bluetooth connect button uses `acceptAllDevices: true` which shows all BT devices including audio/headphones. Phones don't advertise standard BT health services unless a health companion app is open and broadcasting. After connecting, only heart rate and blood pressure GATT services are read — no general phone activity access.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Per-metric status indicator (Good / Fair / Low) on each tile using standard medical thresholds
-- Health Score card that shows:
-  - Total score out of 100 (weighted: heart rate 35%, blood pressure 35%, sleep 30%)
-  - Color-coded tier: Excellent (≥85, green), Good (70–84, amber), Needs Attention (<70, red)
-  - Badge label ("Excellent Health", "Good Health", "Needs Attention")
-  - Score breakdown showing contribution of each metric
-  - Animated progress ring/bar for the total score
-- Sleep score included in calculation even when NOT connected (manual entry always counts)
-- "Complete your health check" prompt when one or more metrics are missing
-- Health score also updates when sleep is entered manually
+- Smart Bluetooth device filter: prefer phone/health devices by filtering using known phone health service UUIDs and user agent hints; include a "Phone / Health App" connection mode
+- After phone connects, show a "Phone Connected" state with a step-by-step guide to open the health app (Google Fit, Samsung Health, Apple Health via intermediary) so GATT services broadcast
+- Activity monitoring panel: once connected, show a live activity feed of steps, calories (if available via GATT), and fallback manual input prompts
+- Phone-type detection: try to detect if connected device is a phone/health tracker vs. audio device by checking available GATT services after connection
+- Clear instructions panel showing how to make a phone discoverable for health data (open Google Fit/Samsung Health, enable BT health sharing)
+- Fallback manual input for all metrics when device doesn't expose the GATT service
 
 ### Modify
-- healthScore() — split into per-metric scoring with labels; sleep score always counted (not gated on isConnected)
-- HeartRateTile — add status badge (Good/Fair/Low) based on bpm value
-- BloodPressureTile — add status badge based on systolic/diastolic
-- SleepTile — add status badge based on hours entered; always allow manual input regardless of connection state
-- Health Score display — replace bare number with rich score card with ring, badge, and breakdown
+- `useBluetoothHealth.ts`: Change BT requestDevice to use two modes — (1) health-focused filter list with known phone health service UUIDs, (2) acceptAllDevices as fallback; try reading steps/activity from GATT 0x1814 (Running Speed), 0x181A (Environmental Sensing), 0x1816 (Cycling Speed) as proxies; improve error messages to explain phone pairing steps
+- `DashboardPage.tsx`: Update the Bluetooth panel (user-selected element) to show phone connection flow, connection guide, and post-connection activity summary
+- Bluetooth panel UI: Add a two-mode connect button ("Connect Phone" primary, "Other Device" secondary); show step-by-step instructions when connecting; show activity data after connection
 
 ### Remove
-- Nothing removed
+- Nothing removed — only enhancing existing Bluetooth flow
 
 ## Implementation Plan
-
-1. Update healthScore logic: make sleep scoring independent of Bluetooth connection, compute per-metric scores and labels
-2. Add status badge to HeartRateTile, BloodPressureTile, SleepTile
-3. Replace bare score number with an animated score card: circular progress indicator, color-coded badge, per-metric breakdown list
-4. Allow sleep manual input always (not just when disconnected)
-5. Show "Enter sleep hours to complete your health check" prompt when sleep is null
+1. Rewrite `useBluetoothHealth.ts` to support phone-focused BT pairing with health service UUIDs and a comprehensive optional services list; add step/activity reading attempts; improve error/guidance messages
+2. Update `DashboardPage.tsx` Bluetooth panel to have "Connect Phone" button, connection instructions, and post-connection activity display with steps/calories tiles
+3. Add clear in-UI guide: "Open Google Fit or Samsung Health on your phone, ensure Bluetooth is on, then tap Connect Phone here"

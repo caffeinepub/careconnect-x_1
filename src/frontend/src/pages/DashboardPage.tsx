@@ -8,14 +8,16 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  Footprints,
   Heart,
   Loader2,
   Moon,
   Pill,
+  Smartphone,
   Stethoscope,
   UserRound,
   Users,
-  Wifi,
+  Watch,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -264,6 +266,32 @@ function SleepTile({
       <p className="text-[9px] text-[#4A5568] mt-0.5">
         {value !== null ? "hrs" : "Log manually"}
       </p>
+    </div>
+  );
+}
+
+function StepsTile({ value }: { value: number | null }) {
+  if (value === null) return null;
+  const isGoalMet = value >= 10000;
+  return (
+    <div
+      className="rounded-xl p-3 text-center"
+      style={{ background: "rgba(255,255,255,0.05)" }}
+    >
+      <Footprints
+        size={18}
+        className="mx-auto mb-1"
+        style={{ color: "#34D399", opacity: 1 }}
+      />
+      <p className="text-sm font-bold" style={{ color: "#34D399" }}>
+        {value.toLocaleString()}
+      </p>
+      <p className="text-[10px] text-[#888888] mt-0.5">Steps</p>
+      <StatusBadge
+        label={isGoalMet ? "Goal Met" : "Keep Going"}
+        type={isGoalMet ? "good" : "fair"}
+      />
+      <p className="text-[9px] text-[#4A5568] mt-0.5">today</p>
     </div>
   );
 }
@@ -626,14 +654,340 @@ function HealthScorePanel({
   );
 }
 
+// --- Bluetooth Connection Panel ---
+
+function DeviceTypeBadge({ type }: { type: "phone" | "tracker" | "unknown" }) {
+  if (type === "phone") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+        style={{
+          background: "rgba(99,102,241,0.15)",
+          color: "#818CF8",
+          border: "1px solid rgba(99,102,241,0.3)",
+        }}
+      >
+        <Smartphone size={10} />
+        Phone
+      </span>
+    );
+  }
+  if (type === "tracker") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+        style={{
+          background: "rgba(52,211,153,0.15)",
+          color: "#34D399",
+          border: "1px solid rgba(52,211,153,0.3)",
+        }}
+      >
+        <Watch size={10} />
+        Tracker
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+      style={{
+        background: "rgba(249,168,201,0.15)",
+        color: "#f9a8c9",
+        border: "1px solid rgba(249,168,201,0.3)",
+      }}
+    >
+      <Bluetooth size={10} />
+      Device
+    </span>
+  );
+}
+
+interface BluetoothPanelProps {
+  isSupported: boolean;
+  connectionStatus: "disconnected" | "connecting" | "connected" | "error";
+  deviceName: string | null;
+  deviceType: "phone" | "tracker" | "unknown";
+  connectedApps: string[];
+  heartRate: number | null;
+  bloodPressure: { systolic: number; diastolic: number } | null;
+  steps: number | null;
+  errorMessage: string | null;
+  onConnect: () => void;
+  onDisconnect: () => void;
+}
+
+function BluetoothPanel({
+  isSupported,
+  connectionStatus,
+  deviceName,
+  deviceType,
+  connectedApps,
+  heartRate,
+  bloodPressure,
+  steps,
+  errorMessage,
+  onConnect,
+  onDisconnect,
+}: BluetoothPanelProps) {
+  const isConnected = connectionStatus === "connected";
+  const isConnecting = connectionStatus === "connecting";
+  const hasError = connectionStatus === "error";
+
+  return (
+    <div
+      className="rounded-xl mb-4 overflow-hidden"
+      style={{
+        background: "rgba(249,168,201,0.05)",
+        border: isConnected
+          ? "1px solid rgba(34,197,94,0.25)"
+          : hasError
+            ? "1px solid rgba(239,68,68,0.25)"
+            : "1px solid rgba(249,168,201,0.15)",
+      }}
+    >
+      {/* iOS / unsupported */}
+      {!isSupported ? (
+        <div className="flex items-start gap-3 p-3">
+          <BluetoothOff
+            size={16}
+            className="text-[#EF4444] flex-shrink-0 mt-0.5"
+          />
+          <div>
+            <p className="text-xs font-semibold text-[#EF4444]">
+              {isIOS()
+                ? "Bluetooth Not Available on iPhone/iPad"
+                : "Web Bluetooth Not Supported"}
+            </p>
+            <p className="text-[11px] text-[#888888] mt-0.5">
+              {isIOS()
+                ? "Apple does not support Web Bluetooth on iOS. To connect a health device, use Chrome or Edge on Android or a desktop computer."
+                : "Please use Chrome or Edge on Android or desktop to connect a Bluetooth health device."}
+            </p>
+          </div>
+        </div>
+      ) : isConnecting ? (
+        /* Connecting state */
+        <div className="flex items-center gap-3 p-3">
+          <Loader2
+            size={16}
+            className="text-[#f9a8c9] animate-spin flex-shrink-0"
+          />
+          <div>
+            <p className="text-xs text-[#f9a8c9] font-medium">
+              Connecting to device…
+            </p>
+            <p className="text-[10px] text-[#888888] mt-0.5">
+              Select your{" "}
+              <span className="text-[#f9a8c9] font-semibold">phone</span> from
+              the picker — not headphones or speakers
+            </p>
+          </div>
+        </div>
+      ) : isConnected ? (
+        /* Connected state */
+        <div className="p-3 space-y-2">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <PulsingDot color="#22C55E" />
+              <BluetoothConnected size={14} className="text-[#22C55E]" />
+              <p className="text-xs font-semibold text-[#22C55E]">
+                {deviceName ?? "Unknown Device"}
+              </p>
+              <DeviceTypeBadge type={deviceType} />
+              <span className="text-[10px] text-[#888888]">
+                · Live data active
+              </span>
+            </div>
+            <button
+              type="button"
+              data-ocid="bluetooth.disconnect.button"
+              onClick={onDisconnect}
+              className="flex items-center gap-1 text-[10px] text-[#888888] hover:text-[#EF4444] transition-colors flex-shrink-0"
+            >
+              <X size={12} />
+              Disconnect
+            </button>
+          </div>
+
+          {/* Data access row */}
+          <div className="flex flex-wrap gap-2 mt-1">
+            <span
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+              style={{
+                background:
+                  heartRate !== null
+                    ? "rgba(34,197,94,0.1)"
+                    : "rgba(255,255,255,0.05)",
+                color: heartRate !== null ? "#22C55E" : "#888",
+                border: `1px solid ${heartRate !== null ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}`,
+              }}
+            >
+              {heartRate !== null ? "✓" : "~"} Heart Rate
+            </span>
+            <span
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+              style={{
+                background:
+                  bloodPressure !== null
+                    ? "rgba(34,197,94,0.1)"
+                    : "rgba(255,255,255,0.05)",
+                color: bloodPressure !== null ? "#22C55E" : "#888",
+                border: `1px solid ${bloodPressure !== null ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}`,
+              }}
+            >
+              {bloodPressure !== null ? "✓" : "~"} Blood Pressure
+            </span>
+            <span
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+              style={{
+                background:
+                  steps !== null
+                    ? "rgba(34,197,94,0.1)"
+                    : "rgba(255,255,255,0.05)",
+                color: steps !== null ? "#22C55E" : "#888",
+                border: `1px solid ${steps !== null ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)"}`,
+              }}
+            >
+              {steps !== null ? "✓" : "~"} Steps
+            </span>
+          </div>
+
+          {/* Connected apps */}
+          {connectedApps.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[9px] text-[#555] uppercase tracking-wider">
+                Accessing:
+              </span>
+              {connectedApps.map((app) => (
+                <span
+                  key={app}
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                  style={{
+                    background: "rgba(249,168,201,0.1)",
+                    color: "#f9a8c9",
+                    border: "1px solid rgba(249,168,201,0.2)",
+                  }}
+                >
+                  {app}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Disconnected state — phone-focused guidance */
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Smartphone size={16} className="text-[#f9a8c9]" />
+            <p className="text-sm font-semibold text-[#ffffff]">
+              Connect Your Phone for Health Data
+            </p>
+          </div>
+
+          {/* Step-by-step guide */}
+          <div className="space-y-1.5 mb-3">
+            {[
+              {
+                n: 1,
+                text: "Open Google Fit or Samsung Health on your phone",
+                icon: "📱",
+              },
+              {
+                n: 2,
+                text: "Make sure your phone's Bluetooth is turned ON",
+                icon: "🔵",
+              },
+              { n: 3, text: 'Tap "Connect Phone" below', icon: "👇" },
+              {
+                n: 4,
+                text: "In the picker, select YOUR PHONE — not headphones",
+                icon: "✅",
+              },
+            ].map((step) => (
+              <div key={step.n} className="flex items-start gap-2">
+                <span
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                  style={{
+                    background: "rgba(249,168,201,0.2)",
+                    color: "#f9a8c9",
+                    border: "1px solid rgba(249,168,201,0.3)",
+                  }}
+                >
+                  {step.n}
+                </span>
+                <p className="text-[11px] text-[#cccccc] leading-relaxed">
+                  <span className="mr-1">{step.icon}</span>
+                  {step.text}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Error message */}
+          {hasError && errorMessage && (
+            <div
+              className="flex items-start gap-2 p-2 rounded-lg mb-3"
+              style={{
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.2)",
+              }}
+            >
+              <span className="text-[10px] text-[#EF4444] leading-relaxed">
+                ⚠ {errorMessage} — Make sure your phone's health app is open and
+                Bluetooth is enabled, then try again.
+              </span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              data-ocid="bluetooth.connect.button"
+              onClick={onConnect}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-[#0d0d0d] transition-all hover:brightness-110 active:scale-95"
+              style={{ background: "#f9a8c9" }}
+            >
+              <Smartphone size={13} />
+              Connect Phone
+            </button>
+            <button
+              type="button"
+              data-ocid="bluetooth.other.button"
+              onClick={onConnect}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] text-[#888888] hover:text-[#cccccc] transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <Bluetooth size={11} />
+              Other Device
+            </button>
+          </div>
+
+          <p className="text-[9px] text-[#555] mt-2">
+            ℹ Works in Chrome or Edge on Android &amp; desktop only (HTTPS
+            required)
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const {
     heartRate,
     bloodPressure,
     sleep,
+    steps,
     connectionStatus,
     deviceName,
+    deviceType,
+    connectedApps,
     isSupported,
     errorMessage,
     connect,
@@ -652,7 +1006,6 @@ export default function DashboardPage() {
   });
 
   const isConnected = connectionStatus === "connected";
-  const isConnecting = connectionStatus === "connecting";
 
   return (
     <div className="space-y-6 animate-fadeInUp">
@@ -680,102 +1033,19 @@ export default function DashboardPage() {
           </div>
 
           {/* Bluetooth Connection Panel */}
-          <div
-            className="rounded-xl mb-4 overflow-hidden"
-            style={{
-              background: "rgba(249,168,201,0.05)",
-              border: isConnected
-                ? "1px solid rgba(34,197,94,0.25)"
-                : connectionStatus === "error"
-                  ? "1px solid rgba(239,68,68,0.25)"
-                  : "1px solid rgba(249,168,201,0.15)",
-            }}
-          >
-            {!isSupported ? (
-              <div className="flex items-start gap-3 p-3">
-                <BluetoothOff
-                  size={16}
-                  className="text-[#EF4444] flex-shrink-0 mt-0.5"
-                />
-                <div>
-                  <p className="text-xs font-semibold text-[#EF4444]">
-                    {isIOS()
-                      ? "Bluetooth Not Available on iPhone/iPad"
-                      : "Web Bluetooth Not Supported"}
-                  </p>
-                  <p className="text-[11px] text-[#888888] mt-0.5">
-                    {isIOS()
-                      ? "Apple does not support Web Bluetooth on iOS. To connect a health device, use Chrome or Edge on Android or a desktop computer."
-                      : "Please use Chrome or Edge on Android or desktop to connect a Bluetooth health device."}
-                  </p>
-                </div>
-              </div>
-            ) : isConnected ? (
-              <div className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-2">
-                  <PulsingDot color="#22C55E" />
-                  <BluetoothConnected size={14} className="text-[#22C55E]" />
-                  <p className="text-xs font-semibold text-[#22C55E]">
-                    {deviceName}
-                  </p>
-                  <span className="text-[10px] text-[#888888]">
-                    · Live data active
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  data-ocid="bluetooth.disconnect.button"
-                  onClick={disconnect}
-                  className="flex items-center gap-1 text-[10px] text-[#888888] hover:text-[#EF4444] transition-colors"
-                >
-                  <X size={12} />
-                  Disconnect
-                </button>
-              </div>
-            ) : isConnecting ? (
-              <div className="flex items-center gap-3 p-3">
-                <Loader2
-                  size={16}
-                  className="text-[#f9a8c9] animate-spin flex-shrink-0"
-                />
-                <p className="text-xs text-[#f9a8c9]">Connecting to device…</p>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3">
-                <div className="flex items-start gap-2">
-                  <Wifi
-                    size={14}
-                    className="text-[#f9a8c9] flex-shrink-0 mt-0.5"
-                  />
-                  <div>
-                    <p className="text-xs text-[#cccccc] leading-relaxed">
-                      Connect a Bluetooth health device to see live heart rate,
-                      blood pressure & sleep data.
-                    </p>
-                    {connectionStatus === "error" && errorMessage && (
-                      <p className="text-[10px] text-[#EF4444] mt-0.5">
-                        {errorMessage}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-[#555] mt-1">
-                      Works in Chrome or Edge on Android and desktop. Open your
-                      health app on your phone first, then tap Connect Device.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  data-ocid="bluetooth.connect.button"
-                  onClick={connect}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-[#0d0d0d] flex-shrink-0 transition-all hover:brightness-110 active:scale-95"
-                  style={{ background: "#f9a8c9" }}
-                >
-                  <Bluetooth size={13} />
-                  Connect Device
-                </button>
-              </div>
-            )}
-          </div>
+          <BluetoothPanel
+            isSupported={isSupported}
+            connectionStatus={connectionStatus}
+            deviceName={deviceName}
+            deviceType={deviceType}
+            connectedApps={connectedApps}
+            heartRate={heartRate}
+            bloodPressure={bloodPressure}
+            steps={steps}
+            errorMessage={errorMessage}
+            onConnect={connect}
+            onDisconnect={disconnect}
+          />
 
           {/* Health Score Panel — below Bluetooth, above metric tiles */}
           <HealthScorePanel
@@ -784,8 +1054,12 @@ export default function DashboardPage() {
             sleep={sleep}
           />
 
-          {/* Metric Tiles */}
-          <div className="grid grid-cols-3 gap-3 mt-2">
+          {/* Metric Tiles — 3 or 4 columns depending on steps availability */}
+          <div
+            className={`grid gap-3 mt-2 ${
+              steps !== null ? "grid-cols-4" : "grid-cols-3"
+            }`}
+          >
             <HeartRateTile value={heartRate} />
             <BloodPressureTile
               systolic={bloodPressure?.systolic ?? null}
@@ -796,6 +1070,7 @@ export default function DashboardPage() {
               connected={isConnected}
               onManualInput={setSleep}
             />
+            <StepsTile value={steps} />
           </div>
         </GlassCard>
 
